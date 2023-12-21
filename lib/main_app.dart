@@ -1,8 +1,19 @@
+import 'package:ar_sample/class/3d_object_class.dart';
+import 'package:ar_sample/controller/arObjects_controller.dart';
 import 'package:ar_sample/themes/app_theme.dart';
 import 'package:arkit_plugin/arkit_plugin.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:vector_math/vector_math_64.dart' as vector;
+
+final List<ARObject> arObjects = [
+  ARObject('tree', 'assets/imgs/tree.png', 'assets/glb/Tree.glb'),
+  ARObject('presents', 'assets/imgs/gifts.png', 'assets/glb/Gifts.glb'),
+  ARObject('snowman', 'assets/imgs/snowman.png', 'assets/glb/Snowman.glb'),
+  ARObject('socks', 'assets/imgs/socks.png', 'assets/glb/Socks.glb'),
+];
 
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
@@ -34,28 +45,39 @@ class _MyArAppState extends State<MyArApp> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: const Text('Christmas Decorations')),
-      body: Stack(
-        children: [
-          ARKitSceneView(
-            showFeaturePoints: true, //特徴点を表示（オブジェクトを置ける場所）
-            enableTapRecognizer: true, //タップ認識を有効にする
-            planeDetection:
-                ARPlaneDetection.horizontalAndVertical, //垂直方向と平面方向の両方で平面を検出
-            onARKitViewCreated:
-                onARKitViewCreated, //ARKitViewが作成されたときに呼ばれるコールバック関数
+        appBar: AppBar(title: const Text('Christmas Decorations')),
+        body: Center(
+          child: HookConsumer(
+            builder: (context, ref, _) {
+              final selectedObject = ref.watch(selectedObjectProvider);
+              return Stack(
+                children: [
+                  ARKitSceneView(
+                    showFeaturePoints: true, //特徴点を表示（オブジェクトを置ける場所）
+                    enableTapRecognizer: true, //タップ認識を有効にする
+                    planeDetection: ARPlaneDetection
+                        .horizontalAndVertical, //垂直方向と平面方向の両方で平面を検出
+                    onARKitViewCreated: (controller) => onARKitViewCreated(
+                        controller, ref), //ARKitViewが作成されたときに呼ばれるコールバック関数
+                  ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (var arObject in arObjects)
+                          objectSelection(arObject, selectedObject),
+                      ],
+                    ),
+                  )
+                ],
+              );
+            },
           ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [objectSelection(), objectSelection()],
-            ),
-          )
-        ],
-      ));
+        ),
+      );
 
   //ARKitViewが作成されたときの処理
-  void onARKitViewCreated(ARKitController arkitController) {
+  void onARKitViewCreated(ARKitController arkitController, WidgetRef ref) {
     this.arkitController = arkitController;
     //特徴点を取得
     this.arkitController.onARTap = (ar) {
@@ -64,41 +86,63 @@ class _MyArAppState extends State<MyArApp> {
       );
       //特徴点が取得できたら
       if (point != null) {
-        _onARTapHandler(point);
+        _onARTapHandler(point, ref.watch(selectedObjectProvider));
       }
     };
   }
 
-  void _onARTapHandler(ARKitTestResult point) {
+  void _onARTapHandler(ARKitTestResult point, ARObject selectedObject) {
     //タップされた座標を取得
     final position = vector.Vector3(
       point.worldTransform.getColumn(3).x,
       point.worldTransform.getColumn(3).y,
       point.worldTransform.getColumn(3).z,
     );
-    final node = _getNodeFromFlutterAsset(position); //ARオブジェクトを作成
+    final node =
+        _getNodeFromFlutterAsset(position, selectedObject); //ARオブジェクトを作成
     arkitController.add(node); //ARオブジェクトを追加
   }
 
-  ARKitGltfNode _getNodeFromFlutterAsset(vector.Vector3 position) =>
-      ARKitGltfNode(
-        //ARオブジェクトの設定
-        assetType: AssetType.flutterAsset, //アセットタイプ
-        url: 'assets/glb/Gifts.glb', //モデルデータ
-        scale: vector.Vector3(0.5, 0.5, 0.5), //拡大率
-        position: position, //位置
-      );
+  ARKitGltfNode _getNodeFromFlutterAsset(
+      vector.Vector3 position, ARObject selectedObject) {
+    return ARKitGltfNode(
+      assetType: AssetType.flutterAsset,
+      url: selectedObject.modelURL,
+      scale: vector.Vector3(0.5, 0.5, 0.5),
+      position: position,
+    );
+  }
 }
 
-Widget objectSelection() {
-  return Container(
-    width: 150,
-    height: 150,
-    margin: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-        border: Border.all(),
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10)),
-    child: const Text("ああああ"),
+Widget objectSelection(ARObject arObject, ARObject selectedObject) {
+  return HookConsumer(
+    builder: (context, ref, _) {
+      return GestureDetector(
+        onTap: () => ref
+            .read(selectedObjectProvider.notifier)
+            .setSelectedObject(arObject),
+        child: Container(
+          width: 150,
+          height: 180,
+          margin: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+              border: Border.all(),
+              color: arObject == selectedObject ? Colors.blue : Colors.white,
+              borderRadius: BorderRadius.circular(10)),
+          child: Column(
+            children: [
+              Text(arObject.text),
+              SizedBox(
+                width: 150,
+                height: 150,
+                child: Image(
+                  image: AssetImage(arObject.imgURL),
+                ),
+              )
+            ],
+          ),
+        ),
+      );
+    },
   );
 }
