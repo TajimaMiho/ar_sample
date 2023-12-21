@@ -4,15 +4,14 @@ import 'package:ar_sample/themes/app_theme.dart';
 import 'package:arkit_plugin/arkit_plugin.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:vector_math/vector_math_64.dart' as vector;
 
 final List<ARObject> arObjects = [
-  ARObject('tree', 'assets/imgs/tree.png', 'assets/glb/Tree.glb'),
-  ARObject('presents', 'assets/imgs/gifts.png', 'assets/glb/Gifts.glb'),
-  ARObject('snowman', 'assets/imgs/snowman.png', 'assets/glb/Snowman.glb'),
-  ARObject('socks', 'assets/imgs/socks.png', 'assets/glb/Socks.glb'),
+  ARObject('tree', 'assets/imgs/tree.png', 'assets/glb/Tree.glb', 0.5),
+  ARObject('presents', 'assets/imgs/gifts.png', 'assets/glb/Gifts.glb', 0.3),
+  ARObject('snowman', 'assets/imgs/snowman.png', 'assets/glb/Snowman.glb', 0.1),
+  ARObject('socks', 'assets/imgs/socks.png', 'assets/glb/Socks.glb', 0.1),
 ];
 
 class MainApp extends StatelessWidget {
@@ -20,6 +19,7 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Christmas Decorations',
       theme: appTheme(context),
       home: const MyArApp(),
@@ -108,7 +108,8 @@ class _MyArAppState extends State<MyArApp> {
     return ARKitGltfNode(
       assetType: AssetType.flutterAsset,
       url: selectedObject.modelURL,
-      scale: vector.Vector3(0.5, 0.5, 0.5),
+      scale: vector.Vector3(
+          selectedObject.vector, selectedObject.vector, selectedObject.vector),
       position: position,
     );
   }
@@ -126,8 +127,7 @@ Widget objectSelection(ARObject arObject, ARObject selectedObject) {
           height: 180,
           margin: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-              border: Border.all(),
-              color: arObject == selectedObject ? Colors.blue : Colors.white,
+              color: arObject == selectedObject ? Colors.red : Colors.white,
               borderRadius: BorderRadius.circular(10)),
           child: Column(
             children: [
